@@ -1,0 +1,16 @@
+{
+  "name": "usa-food-finder",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node serve.mjs",
+    "check": "node --check dist/app.js && node --check dist/national.js && node --check src/api.mjs",
+    "test": "node test/verify-release.mjs"
+  }
+}

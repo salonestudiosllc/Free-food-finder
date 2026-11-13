@@ -1,0 +1,4 @@
+import{readFileSync,writeFileSync,mkdirSync}from'node:fs';
+const assets={};for(const name of ['index.html','app.js','national.js','style.css'])assets['/'+(name==='index.html'?'':name)]=readFileSync('dist/'+name,'utf8');
+mkdirSync('dist/server',{recursive:true});
+writeFileSync('dist/server/index.js',readFileSync('src/api.mjs','utf8')+'\nconst assets='+JSON.stringify(assets)+`;\nexport default {async fetch(request){const p=new URL(request.url).pathname;if(p.startsWith('/api/'))return api(request);if(!Object.hasOwn(assets,p))return new Response('Not found',{status:404});return new Response(assets[p],{headers:{'Content-Type':p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Permissions-Policy':'geolocation=(self)'}})}};`);

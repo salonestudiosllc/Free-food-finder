@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';import{readFileSync}from'node:fs';import{api}from'../src/api.mjs';import{normalize,safeURL,hours}from'../dist/national.js';
+const req=p=>new Request('https://example.test'+p);let calls=0;
+assert.equal((await api(req('/api/food?zip=123'),()=>{calls++})).status,400);assert.equal(calls,0);
+assert.equal((await api(req('/api/food?lat=&lng='))).status,400);
+assert.equal((await api(req('/api/food?lat=91&lng=0'))).status,400);
+assert.equal((await api(new Request('https://example.test/api/food',{method:'POST'}))).status,405);
+const food={success:true,location:{lat:34,lng:-118},resources:[{id:1,name:'Example',address:'1 Main Street',resource_type:'food_pantry',lat:34,lng:-118},{id:2,name:'Example',address:'1 Main St',resource_type:'food_pantry',lat:34,lng:-118},{id:3,resource_type:'food_pantry',lat:35,lng:-118},{id:4,resource_type:'snap_retailer',lat:34,lng:-118}]};
+const zip=await api(req('/api/food?zip=10001&radius=500&mode=snap'),async url=>{assert.equal(url.hostname,'feedam.org');assert.equal(url.searchParams.get('radius'),'5');assert.equal(url.searchParams.get('mode'),'free');return Response.json(food)});assert.equal(zip.status,200);assert.equal(normalize(await zip.json(),[34,-118]).length,1);
+const geocode=await api(req('/api/geocode?q=1%20Main%20Street%2C%20New%20York%20NY'),async url=>{assert.equal(url.hostname,'geocoding.geo.census.gov');return Response.json({result:{addressMatches:[{matchedAddress:'1 MAIN ST, NEW YORK, NY',coordinates:{x:-74,y:40.7}}]}})});assert.deepEqual((await geocode.json()).matches,[{lat:40.7,lng:-74,label:'1 MAIN ST, NEW YORK, NY'}]);
+assert.deepEqual((await(await api(req('/api/geocode?q=No%20Matching%20Street'),async()=>Response.json({result:{addressMatches:[]}}))).json()).matches,[]);
+assert.equal((await api(req('/api/food?zip=10001'),async()=>new Response('',{status:429}))).status,429);
+assert.equal((await api(req('/api/food?zip=10001'),async()=>{throw new Error('offline')})).status,503);
+assert.equal((await api(req('/api/food?zip=10001'),async()=>Response.json({invalid:true}))).status,502);
+assert.equal(safeURL('javascript:alert(1)'),null);assert.match(hours({hours_status:'unknown',hours_json:'{"daily":"24 hours"}'}),/not confirmed/);
+const html=readFileSync('dist/index.html','utf8'),app=readFileSync('dist/app.js','utf8');assert.ok(!html.includes('value="90804"'));assert.ok(!html.includes('pattern="[0-9]{5}"'));assert.ok(!app.includes("search({zip:'90804'}"));assert.ok(html.includes('USA Food Finder'));assert.ok(app.includes("params.address"));assert.ok(app.includes("/api/food"));
+console.log('PASS: ZIP/address routing, validation, fixed five-mile/free-food upstream query, deduplication, radius enforcement, no matches, rate limits, service failure, malformed records, unsafe links, unknown hours, empty field and no automatic local search.');
